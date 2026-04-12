@@ -23,6 +23,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('auth/logout', [AuthController::class, 'logout']);
 
     Route::middleware('role:admin')->group(function () {
+        Route::post('penghuni/upload-ktp', [ResidentController::class, 'uploadKtp']);
         Route::apiResource('penghuni', ResidentController::class)
             ->parameters(['penghuni' => 'resident']);
         Route::apiResource('rumah', HouseController::class);

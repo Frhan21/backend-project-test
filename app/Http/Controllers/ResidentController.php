@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Resident;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 
 class ResidentController
 {
@@ -52,6 +54,66 @@ class ResidentController
             'status' => 'success',
             'message' => 'Resident created successfully',
             'data' => $resident,
+        ], 201);
+    }
+
+    public function uploadKtp(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'ktp_image' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+        ]);
+
+        $cloudName = config('services.cloudinary.cloud_name');
+        $apiKey = config('services.cloudinary.api_key');
+        $apiSecret = config('services.cloudinary.api_secret');
+        $folder = config('services.cloudinary.folder', 'residents-ktp');
+
+        if (! $cloudName || ! $apiKey || ! $apiSecret) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Cloudinary credentials are not configured',
+            ], 500);
+        }
+
+        $timestamp = time();
+        $signature = sha1("folder={$folder}&timestamp={$timestamp}{$apiSecret}");
+        $file = $validated['ktp_image'];
+
+        try {
+            $response = Http::asMultipart()
+                ->attach(
+                    'file',
+                    file_get_contents($file->getRealPath()),
+                    $file->getClientOriginalName()
+                )
+                ->post("https://api.cloudinary.com/v1_1/{$cloudName}/image/upload", [
+                    'api_key' => $apiKey,
+                    'timestamp' => $timestamp,
+                    'folder' => $folder,
+                    'signature' => $signature,
+                ])
+                ->throw();
+        } catch (RequestException $exception) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to upload image to Cloudinary',
+                'errors' => $exception->response?->json(),
+            ], 502);
+        }
+
+        $payload = $response->json();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'KTP image uploaded successfully',
+            'data' => [
+                'public_id' => $payload['public_id'] ?? null,
+                'url' => $payload['secure_url'] ?? null,
+                'original_filename' => $payload['original_filename'] ?? null,
+                'width' => $payload['width'] ?? null,
+                'height' => $payload['height'] ?? null,
+                'format' => $payload['format'] ?? null,
+            ],
         ], 201);
     }
 

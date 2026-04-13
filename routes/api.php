@@ -26,8 +26,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('penghuni/upload-ktp', [ResidentController::class, 'uploadKtp']);
         Route::apiResource('penghuni', ResidentController::class)
             ->parameters(['penghuni' => 'resident']);
-        Route::apiResource('rumah', HouseController::class);
-        Route::apiResource('hunian', HousingController::class);
+        Route::apiResource('rumah', HouseController::class)
+            ->parameters(['rumah' => 'house']);
+        Route::apiResource('hunian', HousingController::class)
+            ->parameters(['hunian' => 'housing']);
         Route::apiResource('iuran', FeeController::class);
         Route::apiResource('category', CategoryController::class);
     });
